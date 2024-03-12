@@ -1,11 +1,10 @@
 import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 import 'package:http/http.dart' as http;
 
 void main() {
-  return runApp(ChartApp());
+  runApp(ChartApp());
 }
 
 class ChartApp extends StatelessWidget {
@@ -20,7 +19,6 @@ class ChartApp extends StatelessWidget {
 }
 
 class MyHomePage extends StatefulWidget {
-  // ignore: prefer_const_constructors_in_immutables
   MyHomePage({Key? key}) : super(key: key);
 
   @override
@@ -28,23 +26,23 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  List<SalesData> chartData = [];
+  late List<Map<String, dynamic>> chartData;
 
   @override
   void initState() {
-    loadSalesData();
+    loadChartData();
     super.initState();
   }
 
-  Future loadSalesData() async {
+  Future<void> loadChartData() async {
     final String jsonString = await getJsonFromFirebase();
-    final dynamic jsonResponse = json.decode(jsonString);
-    for (Map<String, dynamic> i in jsonResponse)
-      chartData.add(SalesData.fromJson(i));
+    final List<dynamic> jsonResponse = json.decode(jsonString);
+    chartData = jsonResponse.cast<Map<String, dynamic>>();
+    setState(() {});
   }
 
   Future<String> getJsonFromFirebase() async {
-    String url = "https://flutterdemo-f6d47.firebaseio.com/chartSalesData.json";
+    String url = "https://safenest-31386-default-rtdb.asia-southeast1.firebasedatabase.app/data.json";
     http.Response response = await http.get(Uri.parse(url));
     return response.body;
   }
@@ -52,70 +50,82 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(
-          title: const Text('Syncfusion Flutter chart'),
+      appBar: AppBar(
+        title: const Text('Crime Data Visualization'),
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                'Total IPC Crimes for Districts in 2001',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+            ),
+            SizedBox(
+              height: 400,
+              child: SfCartesianChart(
+                title: ChartTitle(text: 'Total IPC Crimes for Districts in 2001'),
+                legend: Legend(isVisible: true),
+                primaryXAxis: CategoryAxis(),
+                series: [
+                  ColumnSeries<Map<String, dynamic>, String>(
+                    dataSource: chartData,
+                    xValueMapper: (Map<String, dynamic> data, _) => data['DISTRICT'] as String,
+                    yValueMapper: (Map<String, dynamic> data, _) => data['TOTAL IPC CRIMES'] as int,
+                    name: 'Total IPC Crimes',
+                  )
+                ],
+                tooltipBehavior: TooltipBehavior(enable: true),
+              ),
+            ),
+            SizedBox(height: 20),
+            SizedBox(
+              height: 400,
+              child: SfCircularChart(
+                title: ChartTitle(text: 'Crime Analysis (Pie Chart)'),
+                series: <CircularSeries>[
+                  PieSeries<Map<String, dynamic>, String>(
+                    dataSource: chartData,
+                    xValueMapper: (Map<String, dynamic> data, _) => 'Murder',
+                    yValueMapper: (Map<String, dynamic> data, _) => data['MURDER'] as int,
+                    dataLabelSettings: DataLabelSettings(isVisible: true),
+                  ),
+                  PieSeries<Map<String, dynamic>, String>(
+                    dataSource: chartData,
+                    xValueMapper: (Map<String, dynamic> data, _) => 'Rape',
+                    yValueMapper: (Map<String, dynamic> data, _) => data['RAPE'] as int,
+                    dataLabelSettings: DataLabelSettings(isVisible: true),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 20),
+            SizedBox(
+              height: 400,
+              child: SfCircularChart(
+                title: ChartTitle(text: 'Crime Analysis (Doughnut Chart)'),
+                series: <CircularSeries>[
+                  DoughnutSeries<Map<String, dynamic>, String>(
+                    dataSource: chartData,
+                    xValueMapper: (Map<String, dynamic> data, _) => 'Murder',
+                    yValueMapper: (Map<String, dynamic> data, _) => data['MURDER'] as int,
+                    dataLabelSettings: DataLabelSettings(isVisible: true),
+                  ),
+                  DoughnutSeries<Map<String, dynamic>, String>(
+                    dataSource: chartData,
+                    xValueMapper: (Map<String, dynamic> data, _) => 'Rape',
+                    yValueMapper: (Map<String, dynamic> data, _) => data['RAPE'] as int,
+                    dataLabelSettings: DataLabelSettings(isVisible: true),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-        body: Center(
-          child: FutureBuilder(
-              future: getJsonFromFirebase(),
-              builder: (context, snapShot) {
-                if (snapShot.hasData) {
-                  return SfCartesianChart(
-                      primaryXAxis: CategoryAxis(),
-                      // Chart title
-                      title: ChartTitle(text: 'Half yearly sales analysis'),
-                      series: <LineSeries<SalesData, String>>[
-                        LineSeries<SalesData, String>(
-                            dataSource: chartData,
-                            xValueMapper: (SalesData sales, _) => sales.month,
-                            yValueMapper: (SalesData sales, _) => sales.sales,
-                            // Enable data label
-                            dataLabelSettings:
-                                DataLabelSettings(isVisible: true))
-                      ]);
-                } else {
-                  return Card(
-                    elevation: 5.0,
-                    child: Container(
-                      height: 100,
-                      width: 400,
-                      child: Center(
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [
-                            Text('Retriving Firebase data...',
-                                style: TextStyle(fontSize: 20.0)),
-                            Container(
-                              height: 40,
-                              width: 40,
-                              child: CircularProgressIndicator(
-                                semanticsLabel: 'Retriving Firebase data',
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                    Colors.blueAccent),
-                                backgroundColor: Colors.grey[300],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                }
-              }),
-        ));
-  }
-}
-
-class SalesData {
-  SalesData(this.month, this.sales);
-
-  final String month;
-  final int sales;
-
-  factory SalesData.fromJson(Map<String, dynamic> parsedJson) {
-    return SalesData(
-      parsedJson['month'].toString(),
-      parsedJson['sales'],
+      ),
     );
   }
 }
